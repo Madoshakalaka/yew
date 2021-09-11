@@ -319,7 +319,7 @@ where
     COMP::Properties: Default,
 {
     #[cfg(debug_assertions)]
-        log::info!("Yew started!");
+        gloo_console::info!("Yew started!");
     start_app_with_props(COMP::Properties::default())
 }
 
