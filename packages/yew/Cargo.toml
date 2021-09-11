@@ -107,8 +107,7 @@ serde_derive = "1"
 ssri = "6.0.0"
 trybuild = "1.0"
 wasm-bindgen-test = "0.3.24"
-wasm-logger = "0.2.0"
-log = "0.4"
+gloo-console = "0.1.0"
 
 [features]
 default = ["agent"]

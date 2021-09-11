@@ -380,7 +380,7 @@ pub(crate) fn insert_node(node: &Node, parent: &Element, next_sibling: Option<&N
             .insert_before(node, Some(next_sibling))
             .map_err(|_|{
                 #[cfg(debug_assertions)]
-                    log::warn!("failed to insert tag before next sibling");
+                    gloo_console::warn!("failed to insert tag before next sibling", parent, next_sibling);
             }).ok(),
         None => parent.append_child(node).expect("failed to append child"),
     };
