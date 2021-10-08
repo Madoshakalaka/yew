@@ -375,10 +375,14 @@ pub(crate) trait VDiff {
 
 pub(crate) fn insert_node(node: &Node, parent: &Element, next_sibling: Option<&Node>) {
     match next_sibling {
-        Some(next_sibling) => parent
+        Some(next_sibling) =>
+            {parent
             .insert_before(node, Some(next_sibling))
-            .expect("failed to insert tag before next sibling"),
-        None => parent.append_child(node).expect("failed to append child"),
+            .map_err(|_|{
+                #[cfg(debug_assertions)]
+                    gloo_console::warn!("failed to insert tag before next sibling", parent, next_sibling);
+            }).ok();},
+        None => {parent.append_child(node).expect("failed to append child");},
     };
 }
 
