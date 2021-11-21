@@ -40,6 +40,14 @@ module.exports = {
             items: [
                 {
                     type: "category",
+                    label: "wasm-bindgen",
+                    items: [
+                        "concepts/wasm-bindgen",
+                        "concepts/wasm-bindgen/web-sys",
+                    ]
+                },
+                {
+                    type: "category",
                     label: "Components",
                     items: [
                         "concepts/components",
@@ -56,6 +64,7 @@ module.exports = {
                         "concepts/html",
                         "concepts/html/components",
                         "concepts/html/elements",
+                        "concepts/html/events",
                         "concepts/html/classes",
                         "concepts/html/lists",
                         "concepts/html/literals-and-expressions"

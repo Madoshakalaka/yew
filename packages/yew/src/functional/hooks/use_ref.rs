@@ -9,7 +9,8 @@ use std::{cell::RefCell, rc::Rc};
 ///
 /// # Example
 /// ```rust
-/// # use yew::{prelude::*, web_sys::{Event, HtmlInputElement}};
+/// # use yew::prelude::*;
+/// # use web_sys::HtmlInputElement;
 /// # use std::rc::Rc;
 /// # use std::cell::RefCell;
 /// # use std::ops::{Deref, DerefMut};
@@ -46,7 +47,7 @@ use std::{cell::RefCell, rc::Rc};
 ///     }
 /// }
 /// ```
-pub fn use_ref<T: 'static>(initial_value: impl FnOnce() -> T + 'static) -> Rc<RefCell<T>> {
+pub fn use_ref<T: 'static>(initial_value: impl FnOnce() -> T) -> Rc<RefCell<T>> {
     use_hook(
         || Rc::new(RefCell::new(initial_value())),
         |state, _| state.clone(),

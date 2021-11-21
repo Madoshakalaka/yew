@@ -118,7 +118,7 @@ where
     Action: 'static,
     State: 'static,
     InitialState: 'static,
-    InitFn: Fn(InitialState) -> State + 'static,
+    InitFn: Fn(InitialState) -> State,
 {
     let init = Box::new(init);
     let reducer = Rc::new(reducer);
@@ -182,5 +182,13 @@ impl<T: fmt::Debug, V> fmt::Debug for UseReducerHandle<T, V> {
         f.debug_struct("UseReducerHandle")
             .field("value", &format!("{:?}", self.value))
             .finish()
+    }
+}
+
+impl<State, Action> PartialEq for UseReducerHandle<State, Action> {
+    fn eq(&self, other: &Self) -> bool {
+        // if the value is the same pointer
+        // then we can assume that that setter is also the same thing
+        Rc::ptr_eq(&self.value, &other.value)
     }
 }

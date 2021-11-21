@@ -34,7 +34,7 @@ struct UseState<T2> {
 ///     }
 /// }
 /// ```
-pub fn use_state<T: 'static, F: FnOnce() -> T + 'static>(initial_state_fn: F) -> UseStateHandle<T> {
+pub fn use_state<T: 'static, F: FnOnce() -> T>(initial_state_fn: F) -> UseStateHandle<T> {
     use_hook(
         // Initializer
         move || UseState {
@@ -109,5 +109,13 @@ impl<T> Clone for UseStateHandle<T> {
             value: Rc::clone(&self.value),
             setter: Rc::clone(&self.setter),
         }
+    }
+}
+
+impl<T> PartialEq for UseStateHandle<T> {
+    fn eq(&self, other: &Self) -> bool {
+        // if the value is the same pointer
+        // then we can assume that that setter is also the same thing
+        Rc::ptr_eq(&self.value, &other.value)
     }
 }
