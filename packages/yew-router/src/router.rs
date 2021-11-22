@@ -1,127 +1,115 @@
 //! Router Component.
-
-use crate::Routable;
-use gloo::{console, events::EventListener};
-use std::marker::PhantomData;
 use std::rc::Rc;
+
+use crate::prelude::*;
 use yew::prelude::*;
 
-/// Wraps `Rc` around `Fn` so it can be passed as a prop.
-pub struct RenderFn<R>(Rc<dyn Fn(&R) -> Html>);
+/// Props for [`Router`].
+#[derive(Properties, PartialEq, Clone)]
+pub struct RouterProps {
+    pub children: Children,
+    pub history: AnyHistory,
+}
 
-impl<R> RenderFn<R> {
-    /// Creates a new [`RenderFn`]
-    ///
-    /// It is recommended that you use [`Router::render`] instead
-    pub fn new(value: impl Fn(&R) -> Html + 'static) -> Self {
-        Self(Rc::new(value))
+/// A context for [`Router`]
+#[derive(Clone)]
+pub(crate) struct RouterState {
+    history: AnyHistory,
+    // Counter to force update.
+    ctr: u32,
+}
+
+impl RouterState {
+    pub fn history(&self) -> AnyHistory {
+        self.history.clone()
     }
 }
 
-impl<T> Clone for RenderFn<T> {
-    fn clone(&self) -> Self {
-        Self(Rc::clone(&self.0))
+impl PartialEq for RouterState {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.ctr == rhs.ctr
     }
 }
 
-impl<T> PartialEq for RenderFn<T> {
-    fn eq(&self, other: &Self) -> bool {
-        // https://github.com/rust-lang/rust-clippy/issues/6524
-        #[allow(clippy::vtable_address_comparisons)]
-        Rc::ptr_eq(&self.0, &other.0)
-    }
+pub(crate) enum RouterStateAction {
+    Navigate,
+    ReplaceHistory(AnyHistory),
 }
 
-/// Props for [`Router`]
-#[derive(Properties)]
-pub struct RouterProps<R> {
-    /// Callback which returns [`Html`] to be rendered for the current route.
-    pub render: RenderFn<R>,
-}
+impl Reducible for RouterState {
+    type Action = RouterStateAction;
 
-impl<R> Clone for RouterProps<R> {
-    fn clone(&self) -> Self {
+    fn reduce(self: Rc<Self>, action: Self::Action) -> Rc<Self> {
+        let history = match action {
+            RouterStateAction::Navigate => self.history(),
+            RouterStateAction::ReplaceHistory(m) => m,
+        };
+
         Self {
-            render: self.render.clone(),
+            history,
+            ctr: self.ctr + 1,
         }
+        .into()
     }
 }
 
-impl<R> PartialEq for RouterProps<R> {
-    fn eq(&self, other: &Self) -> bool {
-        self.render.eq(&other.render)
-    }
-}
-
-#[doc(hidden)]
-pub enum Msg {
-    ReRender,
-}
-
-/// The router component.
+/// The Router component.
 ///
-/// When a route can't be matched, it looks for the route with `not_found` attribute.
-/// If such a route is provided, it redirects to the specified route.
-/// Otherwise `html! {}` is rendered and a message is logged to console
-/// stating that no route can be matched.
-/// See the [crate level document][crate] for more information.
-pub struct Router<R: Routable + 'static> {
-    #[allow(dead_code)] // only exists to drop listener on component drop
-    route_listener: EventListener,
-    _data: PhantomData<R>,
-}
+/// This provides [`History`] context to its children and switches.
+///
+/// You only need one `<Router />` for each application.
+#[function_component(Router)]
+pub fn router(props: &RouterProps) -> Html {
+    let RouterProps { history, children } = props.clone();
 
-impl<R> Component for Router<R>
-where
-    R: Routable + 'static,
-{
-    type Message = Msg;
-    type Properties = RouterProps<R>;
+    let state = use_reducer(|| RouterState {
+        history: history.clone(),
+        ctr: 0,
+    });
 
-    fn create(ctx: &Context<Self>) -> Self {
-        let link = ctx.link().clone();
-        let route_listener = EventListener::new(&yew::utils::window(), "popstate", move |_| {
-            link.send_message(Msg::ReRender)
-        });
-
-        Self {
-            route_listener,
-            _data: PhantomData,
-        }
-    }
-
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
-        match msg {
-            Msg::ReRender => true,
-        }
-    }
-
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        let pathname = yew::utils::window().location().pathname().unwrap();
-        let route = R::recognize(&pathname);
-
-        match route {
-            Some(route) => (ctx.props().render.0)(&route),
-            None => {
-                console::warn!("no route matched");
-                html! {}
-            }
-        }
-    }
-
-    fn destroy(&mut self, _ctx: &Context<Self>) {
-        R::cleanup();
-    }
-}
-
-impl<R> Router<R>
-where
-    R: Routable + Clone + 'static,
-{
-    pub fn render<F>(func: F) -> RenderFn<R>
-    where
-        F: Fn(&R) -> Html + 'static,
     {
-        RenderFn::new(func)
+        let state_dispatcher = state.dispatcher();
+
+        use_effect_with_deps(
+            move |history| {
+                state_dispatcher.dispatch(RouterStateAction::ReplaceHistory(history.clone()));
+
+                let listener =
+                    history.listen(move || state_dispatcher.dispatch(RouterStateAction::Navigate));
+
+                // We hold the listener in the destructor.
+                move || {
+                    std::mem::drop(listener);
+                }
+            },
+            history,
+        );
+    }
+
+    html! {
+        <ContextProvider<RouterState> context={(*state).clone()}>
+            {children}
+        </ContextProvider<RouterState>>
+    }
+}
+
+#[derive(Properties, PartialEq, Clone)]
+pub struct BrowserRouterProps {
+    pub children: Children,
+}
+
+/// A [`Router`] thats provides history via [`BrowserHistory`].
+///
+/// This Router uses browser's native history to manipulate session history
+/// and uses regular URL as route.
+#[function_component(BrowserRouter)]
+pub fn browser_router(props: &BrowserRouterProps) -> Html {
+    let history = use_state(BrowserHistory::new);
+    let children = props.children.clone();
+
+    html! {
+        <Router history={(*history).clone().into_any_history()}>
+            {children}
+        </Router>
     }
 }
