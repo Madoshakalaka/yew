@@ -56,11 +56,11 @@ impl Component for Model {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         html! {
-            <>
+            <BrowserRouter>
                 { self.view_nav(ctx.link()) }
 
                 <main>
-                    <Router<Route> render={Router::render(switch)} />
+                    <Switch<Route> render={Switch::render(switch)} />
                 </main>
                 <footer class="footer">
                     <div class="content has-text-centered">
@@ -72,7 +72,7 @@ impl Component for Model {
                         <a href="https://unsplash.com">{ "Unsplash" }</a>
                     </div>
                 </footer>
-            </>
+            </BrowserRouter>
         }
     }
 }
@@ -80,42 +80,39 @@ impl Model {
     fn view_nav(&self, link: &Scope<Self>) -> Html {
         let Self { navbar_active, .. } = *self;
 
-        let active_class = if navbar_active { "is-active" } else { "" };
+        let active_class = if !navbar_active { "is-active" } else { "" };
 
         html! {
             <nav class="navbar is-primary" role="navigation" aria-label="main navigation">
                 <div class="navbar-brand">
                     <h1 class="navbar-item is-size-3">{ "Yew Blog" }</h1>
 
-                    <a role="button"
-                        class={classes!("navbar-burger", "burger", active_class)}
+                    <button class={classes!("navbar-burger", "burger", active_class)}
                         aria-label="menu" aria-expanded="false"
                         onclick={link.callback(|_| Msg::ToggleNavbar)}
                     >
                         <span aria-hidden="true"></span>
                         <span aria-hidden="true"></span>
                         <span aria-hidden="true"></span>
-                    </a>
+                    </button>
                 </div>
                 <div class={classes!("navbar-menu", active_class)}>
                     <div class="navbar-start">
-                        <Link<Route> classes={classes!("navbar-item")} route={Route::Home}>
+                        <Link<Route> classes={classes!("navbar-item")} to={Route::Home}>
                             { "Home" }
                         </Link<Route>>
-                        <Link<Route> classes={classes!("navbar-item")} route={Route::Posts}>
+                        <Link<Route> classes={classes!("navbar-item")} to={Route::Posts}>
                             { "Posts" }
                         </Link<Route>>
 
                         <div class="navbar-item has-dropdown is-hoverable">
-                            <a class="navbar-link">
+                            <div class="navbar-link">
                                 { "More" }
-                            </a>
+                            </div>
                             <div class="navbar-dropdown">
-                                <a class="navbar-item">
-                                    <Link<Route> classes={classes!("navbar-item")} route={Route::Authors}>
-                                        { "Meet the authors" }
-                                    </Link<Route>>
-                                </a>
+                                <Link<Route> classes={classes!("navbar-item")} to={Route::Authors}>
+                                    { "Meet the authors" }
+                                </Link<Route>>
                             </div>
                         </div>
                     </div>
@@ -126,15 +123,15 @@ impl Model {
 }
 
 fn switch(routes: &Route) -> Html {
-    match routes {
+    match routes.clone() {
         Route::Post { id } => {
-            html! { <Post seed={*id} /> }
+            html! { <Post seed={id} /> }
         }
         Route::Posts => {
             html! { <PostList /> }
         }
         Route::Author { id } => {
-            html! { <Author seed={*id} /> }
+            html! { <Author seed={id} /> }
         }
         Route::Authors => {
             html! { <AuthorList /> }

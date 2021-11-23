@@ -281,7 +281,8 @@ impl<COMP: Component> fmt::Debug for VChild<COMP> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{html, utils::document, Children, Component, Context, Html, NodeRef, Properties};
+    use crate::{html, Children, Component, Context, Html, NodeRef, Properties};
+    use gloo_utils::document;
     use web_sys::Node;
 
     #[cfg(feature = "wasm_test")]
@@ -319,7 +320,7 @@ mod tests {
 
     #[test]
     fn update_loop() {
-        let document = crate::utils::document();
+        let document = gloo_utils::document();
         let parent_scope: AnyScope = crate::html::Scope::<Comp>::new(None).into();
         let parent_element = document.create_element("div").unwrap();
 
@@ -814,5 +815,50 @@ mod layout_tests {
             layout1, layout2, layout3, layout4, layout5, layout6, layout7, layout8, layout9,
             layout10, layout11, layout12,
         ]);
+    }
+
+    #[test]
+    fn component_with_children() {
+        #[derive(Properties, PartialEq)]
+        struct Props {
+            children: Children,
+        }
+
+        struct ComponentWithChildren;
+
+        impl Component for ComponentWithChildren {
+            type Message = ();
+            type Properties = Props;
+
+            fn create(_ctx: &Context<Self>) -> Self {
+                Self
+            }
+
+            fn view(&self, ctx: &Context<Self>) -> Html {
+                html! {
+                  <ul>
+                    { for ctx.props().children.iter().map(|child| html! { <li>{ child }</li> }) }
+                  </ul>
+                }
+            }
+        }
+
+        let layout = TestLayout {
+            name: "13",
+            node: html! {
+                <ComponentWithChildren>
+                    if true {
+                        <span>{ "hello" }</span>
+                        <span>{ "world" }</span>
+                    }  else {
+                        <span>{ "goodbye" }</span>
+                        <span>{ "world" }</span>
+                    }
+                </ComponentWithChildren>
+            },
+            expected: "<ul><li><span>hello</span><span>world</span></li></ul>",
+        };
+
+        diff_layouts(vec![layout]);
     }
 }

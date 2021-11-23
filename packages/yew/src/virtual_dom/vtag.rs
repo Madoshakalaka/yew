@@ -2,8 +2,8 @@
 
 use super::{Apply, AttrValue, Attributes, Key, Listener, Listeners, VDiff, VList, VNode};
 use crate::html::{AnyScope, IntoPropValue, NodeRef};
-use crate::utils::document;
 use gloo::console;
+use gloo_utils::document;
 use std::borrow::Cow;
 use std::cmp::PartialEq;
 use std::hint::unreachable_unchecked;
@@ -44,7 +44,7 @@ impl<T: AccessValue> Apply for Value<T> {
         match (&self.0, &ancestor.0) {
             (Some(new), Some(_)) => {
                 // Refresh value from the DOM. It might have changed.
-                if new != &el.value() {
+                if new.as_ref() != el.value() {
                     el.set_value(new);
                 }
             }
@@ -1075,7 +1075,7 @@ mod tests {
             <@{"input"} value="World"/>
         };
         let input_vtag = assert_vtag_mut(&mut input_el);
-        assert_eq!(input_vtag.value(), Some(&Cow::Borrowed("World")));
+        assert_eq!(input_vtag.value(), Some(&AttrValue::Static("World")));
         assert!(!input_vtag.attributes.iter().any(|(k, _)| k == "value"));
     }
 
@@ -1225,5 +1225,154 @@ mod layout_tests {
         };
 
         diff_layouts(vec![layout1, layout2, layout3, layout4]);
+    }
+}
+
+#[cfg(test)]
+mod tests_without_browser {
+    use crate::html;
+
+    #[test]
+    fn html_if_bool() {
+        assert_eq!(
+            html! {
+                if true {
+                    <div class="foo" />
+                }
+            },
+            html! { <div class="foo" /> },
+        );
+        assert_eq!(
+            html! {
+                if false {
+                    <div class="foo" />
+                } else {
+                    <div class="bar" />
+                }
+            },
+            html! {
+                <div class="bar" />
+            },
+        );
+        assert_eq!(
+            html! {
+                if false {
+                    <div class="foo" />
+                }
+            },
+            html! {},
+        );
+
+        // non-root tests
+        assert_eq!(
+            html! {
+                <div>
+                    if true {
+                        <div class="foo" />
+                    }
+                </div>
+            },
+            html! {
+                <div>
+                    <div class="foo" />
+                </div>
+            },
+        );
+        assert_eq!(
+            html! {
+                <div>
+                    if false {
+                        <div class="foo" />
+                    } else {
+                        <div class="bar" />
+                    }
+                </div>
+            },
+            html! {
+                <div>
+                    <div class="bar" />
+                </div>
+            },
+        );
+        assert_eq!(
+            html! {
+                <div>
+                    if false {
+                        <div class="foo" />
+                    }
+                </div>
+            },
+            html! {
+                <div>
+                    <></>
+                </div>
+            },
+        );
+    }
+
+    #[test]
+    fn html_if_option() {
+        let option_foo = Some("foo");
+        let none: Option<&'static str> = None;
+        assert_eq!(
+            html! {
+                if let Some(class) = option_foo {
+                    <div class={class} />
+                }
+            },
+            html! { <div class="foo" /> },
+        );
+        assert_eq!(
+            html! {
+                if let Some(class) = none {
+                    <div class={class} />
+                } else {
+                    <div class="bar" />
+                }
+            },
+            html! { <div class="bar" /> },
+        );
+        assert_eq!(
+            html! {
+                if let Some(class) = none {
+                    <div class={class} />
+                }
+            },
+            html! {},
+        );
+
+        // non-root tests
+        assert_eq!(
+            html! {
+                <div>
+                    if let Some(class) = option_foo {
+                        <div class={class} />
+                    }
+                </div>
+            },
+            html! { <div><div class="foo" /></div> },
+        );
+        assert_eq!(
+            html! {
+                <div>
+                    if let Some(class) = none {
+                        <div class={class} />
+                    } else {
+                        <div class="bar" />
+                    }
+                </div>
+            },
+            html! { <div><div class="bar" /></div> },
+        );
+        assert_eq!(
+            html! {
+                <div>
+                    if let Some(class) = none {
+                        <div class={class} />
+                    }
+                </div>
+            },
+            html! { <div><></></div> },
+        );
     }
 }

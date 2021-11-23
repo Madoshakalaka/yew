@@ -125,6 +125,17 @@ html! {
 
 <!--END_DOCUSAURUS_CODE_TABS-->
 
+## Lints
+
+If you compile Yew using a nightly version of the Rust compiler, the macro will warn you about some
+common pitfalls that you might run into. Of course, you may need to use the stable compiler (e.g.
+your organization might have a policy mandating it) for release builds, but even if you're using a
+stable toolchain, running `cargo +nightly check` might flag some ways that you could improve your
+HTML code.
+
+At the moment the lints are mostly accessibility-related. If you have ideas for lints, please feel
+free to [chime in on this issue](https://github.com/yewstack/yew/issues/1334).
+
 ## Special properties
 
 There are special properties which don't directly influence the DOM but instead act as instructions to Yew's virtual DOM.
@@ -138,4 +149,37 @@ Currently, there are two such special props: `ref` and `key`.
 The documentation for keys is yet to be written. See [#1263](https://github.com/yewstack/yew/issues/1263).
 
 For now, use keys when you have a list where the order of elements changes. This includes inserting or removing elements from anywhere but the end of the list.
+:::
+
+## If blocks
+
+To conditionally render some markup, we wrap it in an `if` block:
+
+```rust
+use yew::html;
+
+html! {
+    if true {
+        <p>{ "True case" }</p>
+    }
+};
+```
+
+There may also be an `else` case:
+
+```rust
+use yew::html;
+let some_condition = true;
+
+html! {
+    if false {
+        <p>{ "True case" }</p>
+    } else {
+        <p>{ "False case" }</p>
+    }
+};
+```
+
+:::note
+`if let` statements can also be used in the same way.
 :::

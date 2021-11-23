@@ -15,7 +15,7 @@ thread_local! {
     static LISTENER_ID_PROP: wasm_bindgen::JsValue = "__yew_listener_id".into();
 
     /// Cached reference to the document body
-    static BODY: web_sys::HtmlElement = crate::utils::document().body().unwrap();
+    static BODY: web_sys::HtmlElement = gloo_utils::document().body().unwrap();
 }
 
 /// Bubble events during delegation
@@ -502,7 +502,7 @@ impl Registry {
 
         run_handler(&target);
 
-        if unsafe { BUBBLE_EVENTS } {
+        if unsafe { BUBBLE_EVENTS } && !event.cancel_bubble() {
             let mut el = target;
             loop {
                 el = match el.parent_element() {
@@ -523,10 +523,11 @@ mod tests {
     use std::marker::PhantomData;
 
     use wasm_bindgen_test::{wasm_bindgen_test as test, wasm_bindgen_test_configure};
-    use web_sys::{Event, EventInit};
+    use web_sys::{Event, EventInit, MouseEvent};
     wasm_bindgen_test_configure!(run_in_browser);
 
-    use crate::{html, html::TargetCast, utils::document, AppHandle, Component, Context, Html};
+    use crate::{html, html::TargetCast, AppHandle, Component, Context, Html};
+    use gloo_utils::document;
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
 
@@ -665,7 +666,7 @@ mod tests {
 
     async fn await_animation_frame() {
         JsFuture::from(js_sys::Promise::new(&mut |resolve, _| {
-            crate::utils::window()
+            gloo_utils::window()
                 .request_animation_frame(&resolve)
                 .unwrap();
         }))
@@ -793,6 +794,40 @@ mod tests {
         assert_count(&el, 4);
     }
 
+    #[test]
+    fn cancel_bubbling() {
+        struct CancelBubbling;
+
+        impl Mixin for CancelBubbling {
+            fn view<C>(ctx: &Context<C>, state: &State) -> Html
+            where
+                C: Component<Message = Message>,
+            {
+                html! {
+                    <div onclick={ctx.link().callback(|_| Message::Action)}>
+                        <a onclick={ctx.link().callback(|mouse_event: MouseEvent| {
+                            let event: Event = mouse_event.dyn_into().unwrap();
+                            event.stop_propagation();
+                            Message::Action
+                        })}>
+                            {state.action}
+                        </a>
+                    </div>
+                }
+            }
+        }
+
+        let (_, el) = init::<CancelBubbling>("a");
+
+        assert_count(&el, 0);
+
+        el.click();
+        assert_count(&el, 1);
+
+        el.click();
+        assert_count(&el, 2);
+    }
+
     fn test_input_listener<E>(make_event: impl Fn() -> E)
     where
         E: JsCast + std::fmt::Debug,
@@ -857,7 +892,7 @@ mod tests {
         test_input_listener(|| {
             web_sys::InputEvent::new_with_event_init_dict(
                 "input",
-                &web_sys::InputEventInit::new().bubbles(true),
+                web_sys::InputEventInit::new().bubbles(true),
             )
             .unwrap()
         })
@@ -868,7 +903,7 @@ mod tests {
         test_input_listener(|| {
             web_sys::Event::new_with_event_init_dict(
                 "change",
-                &web_sys::EventInit::new().bubbles(true),
+                web_sys::EventInit::new().bubbles(true),
             )
             .unwrap()
         })
