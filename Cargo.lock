@@ -2919,6 +2919,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "futures 0.3.31",
+ "gloo",
  "log",
  "reqwest",
  "serde",

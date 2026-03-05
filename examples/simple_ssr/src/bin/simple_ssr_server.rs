@@ -33,9 +33,10 @@ async fn main() {
         .await
         .expect("failed to read index.html");
 
-    let (index_html_before, index_html_after) = index_html_s.split_once("<body>").unwrap();
+    let (index_html_before, index_html_after) =
+        index_html_s.split_once("<div id=\"output\">").unwrap();
     let mut index_html_before = index_html_before.to_owned();
-    index_html_before.push_str("<body>");
+    index_html_before.push_str("<div id=\"output\">");
     let index_html_after = index_html_after.to_owned();
 
     let html = warp::path::end().then(move || {
@@ -55,5 +56,5 @@ async fn main() {
     let routes = html.or(warp::fs::dir(opts.dir));
 
     println!("You can view the website at: http://localhost:8080/");
-    warp::serve(routes).run(([127, 0, 0, 1], 8080)).await;
+    warp::serve(routes).run(([0, 0, 0, 0], 8080)).await;
 }
